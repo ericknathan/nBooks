@@ -2,6 +2,7 @@ package com.github.ericknathan.books.controllers;
 
 
 import com.github.ericknathan.books.dtos.book.BookDetailsDTO;
+import com.github.ericknathan.books.dtos.book.CountByCompanyDTO;
 import com.github.ericknathan.books.dtos.book.CreateBookDTO;
 import com.github.ericknathan.books.dtos.book.UpdateBookDTO;
 import com.github.ericknathan.books.models.BookModel;
@@ -11,11 +12,13 @@ import com.github.ericknathan.books.repositories.BookRepository;
 import com.github.ericknathan.books.repositories.CompanyRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -40,9 +43,8 @@ public class BookController {
     }
 
     @GetMapping
-    public ResponseEntity<List<BookDetailsDTO>> getBooks(Pageable pageable) {
-        var books = bookRepository.findAll(pageable)
-                .stream().map(BookDetailsDTO::new).toList();
+    public ResponseEntity<Page<BookDetailsDTO>> getBooks(Pageable pageable) {
+        var books = bookRepository.findAll(pageable).map(BookDetailsDTO::new);
 
         return ResponseEntity.ok(books);
     }
@@ -77,7 +79,7 @@ public class BookController {
     }
 
     @DeleteMapping("{id}")
-    public ResponseEntity<?> deleteBook(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
         var book = bookRepository.findById(id);
 
         if (book.isEmpty()) return ResponseEntity.notFound().build();
@@ -85,4 +87,34 @@ public class BookController {
         bookRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("search/by-title")
+    public ResponseEntity<Page<BookDetailsDTO>> getBooksByTitle(@RequestParam String title, Pageable pageable) {
+        var books = bookRepository.findByTitle(title, pageable).map(BookDetailsDTO::new);
+
+        return ResponseEntity.ok(books);
+    }
+
+    @GetMapping("search/by-date")
+    public ResponseEntity<Page<BookDetailsDTO>> getBooksByDate(@RequestParam LocalDate startDate, @RequestParam LocalDate endDate, Pageable pageable) {
+        var books = bookRepository.findByPublishedAtBetween(startDate, endDate, pageable).map(BookDetailsDTO::new);
+
+        return ResponseEntity.ok(books);
+    }
+
+    @GetMapping("search/by-company-and-title")
+    public ResponseEntity<Page<BookDetailsDTO>> getBooksByCompany(@RequestParam Long companyId, @RequestParam String title, Pageable pageable) {
+        var books = bookRepository.findByCompanyIdAndTitle(companyId, title, pageable).map(BookDetailsDTO::new);
+
+        return ResponseEntity.ok(books);
+    }
+
+    @GetMapping("count/by-company")
+    public ResponseEntity<CountByCompanyDTO> countBooksByCompany(@RequestParam Long companyId) {
+        var count = bookRepository.countBooksByCompany(companyId);
+
+        return ResponseEntity.ok(new CountByCompanyDTO(count, companyId));
+    }
+
+
 }
